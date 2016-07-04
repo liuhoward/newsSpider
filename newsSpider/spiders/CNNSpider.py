@@ -4,55 +4,71 @@ import re
 from scrapy.selector import Selector
 from bs4 import BeautifulSoup
 from newsSpider.items import NewsspiderItem
-from scrapy.contrib.linkextractors import LinkExtractor
-from scrapy.contrib.spiders import CrawlSpider,Rule
+from scrapy.linkextractors import LinkExtractor
+from scrapy.spiders import CrawlSpider,Rule
 class ExampleSpider(CrawlSpider):
     name = "newsSpider"
-    allowed_domains = ["www.cnn.com"]
-    start_urls = ["http://www.cnn.com/health",
-                  "http://www.cnn.com/entertainment",
-                  "http://www.cnn.com/travel",
+    allowed_domains = ["www.medicalnewstoday.com"]
+    start_urls = ["http://www.medicalnewstoday.com/categories",
+                  #"http://www.medicalnewstoday.com/releases/305670.php",
                   ]
-    rules=(
-        Rule(LinkExtractor(allow=r"/2016/02/\d\d/health/*"),
-        callback="parse_news",follow=True),
-        Rule(LinkExtractor(allow=r"/2016/02/\d\d/entertainment/*"),
-        callback="parse_news",follow=True),
-        Rule(LinkExtractor(allow=r"/2016/02/\d\d/travel/*"),
-        callback="parse_news",follow=True),
+    rules = (
+        Rule(LinkExtractor(allow=r"/categories/*")),
+        Rule(LinkExtractor(allow=r"/[a-z]+/[0-9]+\.php"),
+        callback="parse_news",follow=False),
     )
 
     def parse_news(self,response):
 
         item = NewsspiderItem()
-        self.get_title(response,item)
-        self.get_category(response,item)
-        self.get_url(response,item)
-        self.get_text(response,item)
-        return item
-
-    def get_title(self,response,item):
-        title=response.xpath("/html/head/title/text()").extract()
-        if title:
-            # print 'title:'+title[0][:-5].encode('utf-8')
-            item['newsTitle']=title[0].split(" - ")[0].replace("\n", " ").strip().encode('utf-8')
-
-    def get_category(self,response,item):
-        category = response.url.strip().split('/')[-3]
-        if category:
-            item['newsCategory']=category
-
-    def  get_text(self,response,item):
-        text = ""
         soup = BeautifulSoup(response.body, 'html.parser')
-        for paragraph in soup.find_all("p", class_="zn-body__paragraph"):
-            text += " " + paragraph.get_text().strip()
-            #print paragraph.get_text()
 
-        item['newsContext'] = text.encode('utf-8')
+        item['id'] = response.url.strip().split("/")[-1].split(".")[0].strip()
+        item['title'] = soup.title.string.strip()
+        item['date'] = soup.find("time")["datetime"]
 
-    def get_url(self,response,item):
-        news_url=response.url
-        if news_url:
-            #print news_url
-            item['newsURL']=news_url
+        fbShare = soup.find("span", class_ = re.compile("count_yes"))
+        if fbShare:
+            item['fbShare'] = fbShare.get_text().strip()
+        else:
+            item['fbShare'] = "0"
+
+        articleBody = soup.find("div", itemprop = "articleBody")
+        #bodySoup = BeautifulSoup(articleBody)
+        item['text'] = articleBody.get_text().strip()
+
+        mainCategoryTag = soup.find("span", class_ = "category_main")
+        #mainCategorySoup = BeautifulSoup(mainCategoryTag)
+        item['mainCategory'] = mainCategoryTag.get_text().strip()
+
+        subCategory = []
+        for tmpCat in soup.find_all("span", class_ = "category_sub"):
+            subCategory.append(tmpCat.get_text().strip())
+        item['subCategory'] = subCategory
+
+        pubRating = soup.find("span", class_ = re.compile("pub_average"))
+        if pubRating:
+            item['pubRating'] = pubRating.get_text().strip()
+        else:
+            item['pubRating'] = "0"
+
+        pubVotes = soup.find("span", class_ = re.compile("pub_votes"))
+        if pubVotes:
+            item['pubVotes'] = pubVotes.get_text().strip().split(" ")[0]
+        else:
+            item['pubVotes'] = "0"
+
+        proRating = soup.find("span", class_ = re.compile("hcp_average"))
+        if proRating:
+            item['proRating'] = proRating.get_text().strip()
+        else:
+            item['proRating'] = "0"
+
+        proVotes = soup.find("span", class_ = re.compile("hcp_votes"))
+        if proVotes:
+            item['proVotes'] = proVotes.get_text().strip().split(" ")[0]
+        else:
+            item['proVotes'] = "0"
+
+
+        return item
