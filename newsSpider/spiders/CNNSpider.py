@@ -6,15 +6,17 @@ from bs4 import BeautifulSoup
 from newsSpider.items import NewsspiderItem
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider,Rule
+from scrapy.http import Request
+
 class ExampleSpider(CrawlSpider):
     name = "newsSpider"
     allowed_domains = ["www.medicalnewstoday.com"]
     start_urls = ["http://www.medicalnewstoday.com/categories",
-                  #"http://www.medicalnewstoday.com/releases/305670.php",
+                  #"http://www.medicalnewstoday.com/articles/38085.php",
                   ]
     rules = (
-        Rule(LinkExtractor(allow=r"/categories/*")),
-        Rule(LinkExtractor(allow=r"/[a-z]+/[0-9]+\.php"),
+        Rule(LinkExtractor(allow=r"/categories/.*")),
+        Rule(LinkExtractor(allow=r"/[a-z]+/[0-9]+\.php.*"),
         callback="parse_news",follow=False),
     )
 
@@ -35,7 +37,10 @@ class ExampleSpider(CrawlSpider):
 
         articleBody = soup.find("div", itemprop = "articleBody")
         #bodySoup = BeautifulSoup(articleBody)
-        item['text'] = articleBody.get_text().strip()
+        text = ""
+        for paragraph in articleBody.find_all("p"):
+           text += " " + paragraph.get_text().strip()
+        item['text'] = text.strip()
 
         mainCategoryTag = soup.find("span", class_ = "category_main")
         #mainCategorySoup = BeautifulSoup(mainCategoryTag)
@@ -71,4 +76,10 @@ class ExampleSpider(CrawlSpider):
             item['proVotes'] = "0"
 
 
-        return item
+        yield item
+
+        nextlink=response.xpath('//li[@class="next"]/a/@href').extract()
+        if nextlink:
+            link=nextlink[0]
+            #print "==================================link " + link
+            yield Request(link, callback=self.parse_news)
