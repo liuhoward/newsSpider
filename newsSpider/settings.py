@@ -19,6 +19,8 @@ ITEM_PIPELINES = {
 
 DOWNLOAD_TIMEOUT = 15
 
+#DUPEFILTER_CLASS = 'scrapy.dupefilters.BaseDupeFilter'
+
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'newsSpider (+http://www.yourdomain.com)'
 
