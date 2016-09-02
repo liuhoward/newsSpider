@@ -11,19 +11,41 @@ from scrapy.http import Request
 class ExampleSpider(CrawlSpider):
     name = "newsSpider"
     allowed_domains = ["www.indeed.com"]
-    start_urls = ["http://www.indeed.com/cmp/Abra-Auto-Body-&-Glass/reviews",
+    start_urls = ["http://www.indeed.com/Best-Places-to-Work",
 
                   ]
     rules = (
-        #((\?fcountry=US)(&start=[0-9]*))?
-        Rule(LinkExtractor(allow=r"/cmp/Abra-Auto-Body-&-Glass/reviews$"),
+        #((\?fcountry=US)(&start=[0-9]*))?   [A-Za-z0-9-,'&\.,]+
+        Rule(LinkExtractor(allow=r"/Best-Places-to-Work$"),
+             callback="parse_company", follow=False),
+        Rule(LinkExtractor(allow=r"/cmp/[A-Za-z0-9-,'&\.,]/reviews$"),
         callback="parse_news",follow=False),
     )
 
+    def parse_company(self, response):
+
+        soup = BeautifulSoup(response.body, 'lxml')
+
+        domain = "http://www.indeed.com"
+
+        for comLink in soup.find_all("a", attrs={"data-tn-element": "rating-link"}):
+            reviewLink = domain + comLink['href']
+            yield scrapy.Request(reviewLink, callback=self.parse_news)
+
+
+
+        nextlink = soup.find("span", attrs={"data-tn-element": "next-page"})
+        if nextlink:
+            link = domain + nextlink.a['href']
+            #print "==================================link " + link
+            yield scrapy.Request(link, callback=self.parse_company, dont_filter=True)
+
+
+
     def parse_news(self,response):
 
-        print "======================================================"
-        print(response.url)
+        #print "======================================================"
+        #print(response.url)
 
         soup = BeautifulSoup(response.body, 'lxml')
 
@@ -33,6 +55,7 @@ class ExampleSpider(CrawlSpider):
         if companyName and companyName.string:
             company = companyName.string
         else:
+
             company = response.url.strip().split("/")[4].strip().replace('-', ' ')
 
         firstPage = False
@@ -64,7 +87,7 @@ class ExampleSpider(CrawlSpider):
         nextlink=soup.find("a", attrs={"data-tn-element": "next-page"})
         if nextlink:
             link=domain + nextlink['href']
-            print "==================================link " + link
+            #print "==================================link " + link
             yield scrapy.Request(link, callback=self.parse_news, dont_filter=True)
 
 
