@@ -13,6 +13,9 @@ import random
 import json
 import datetime
 import logging
+import redis
+import urllib
+import os
 
 class ExampleSpider(scrapy.Spider):
     name = "newsSpider"
@@ -56,13 +59,13 @@ class ExampleSpider(scrapy.Spider):
 
     def __init__(self):
         service_args_debug = ['--load-images=false', '--disk-cache=true', '--debug=true', '--webdriver-loglevel=debug']
-        service_args = ['--load-images=false', '--disk-cache=false']
-        #self.driver = webdriver.PhantomJS(
-        #    service_args=service_args)
-        self.driver = webdriver.Firefox()
+        service_args = ['--disk-cache=true']
+        self.driver = webdriver.PhantomJS(
+            service_args=service_args)
+        #self.driver = webdriver.Firefox()
         self.driver.implicitly_wait(10)
         #time.sleep(5)
-        #self.driver.set_window_size(640, 960)
+        self.driver.set_window_size(1280,1024)#640, 960)
         comListFile = "companyProfile.json"
         self.get_company_list(comListFile)
 
@@ -90,18 +93,24 @@ class ExampleSpider(scrapy.Spider):
         self.driver.implicitly_wait(10)
         self.driver.get(self.index_url)
         time.sleep(2)
+        count = 1
         while True:
             try:
                 self.driver.find_element_by_css_selector("span.hideHH").click()
-                self.driver.implicitly_wait(10)
-                #time.sleep(5)
-                break
                 # self.driver.find_element_by_class_name("hideHH").click()
+                self.driver.implicitly_wait(10)
+                break
+
             except:
                 # print "==============try fail, sleep"
                 logging.error("fail to sign in")
                 # time.sleep(20)
                 self.driver.implicitly_wait(20)
+            count += 1
+            if count == 5:
+                with open("login.html", "w") as file:
+                    file.write(self.driver.page_source.encode('utf-8'))
+                return
 
         self.driver.find_element_by_id("signInUsername").clear()
         self.driver.find_element_by_id("signInUsername").send_keys(self.username)
@@ -121,10 +130,29 @@ class ExampleSpider(scrapy.Spider):
         time.sleep(2)
         while True:
             try:
-                self.driver.find_element_by_id("recaptcha_challenge_image")
-                #self.driver.implicitly_wait(30)
-                time.sleep(15)
+                captcha = self.driver.find_element_by_id('recaptcha_response_field')
+                img = self.driver.find_element_by_id("recaptcha_challenge_image")
+                if img:
+                    src=img.get_attribute('src')
+                    urllib.urlretrieve(src, "captcha.jpg")
+                    #os.system("display /home/howard/workspace/newsSpider/captcha.jpg")
+
+                else:
+                    break
+
                 logging.error('input captcha!!!!!!!!!!')
+                captcha_input = raw_input(">>> Input: ")
+                #captcha_input = self.r_local.get(
+                #    'captcha_input')
+                if captcha_input:
+                    captcha.clear()
+                    captcha.send_keys(captcha_input)
+                    self.driver.find_element_by_id("dCF_input_complete").click()
+                    #WebElement.sendKeys(Keys.RETURN);
+                else:
+                    time.sleep(10)
+
+                #time.sleep(15)
 
             except:
                 logging.info("sucess recaptcha!!!!!!!!!")
@@ -138,6 +166,7 @@ class ExampleSpider(scrapy.Spider):
     def start_requests(self):
         print "==========================request"
 
+        self.recaptcha()
         self.relogin()
 
         return [
@@ -146,7 +175,6 @@ class ExampleSpider(scrapy.Spider):
 
 
     def parse(self, response):
-        #print "=====================================parse"
         soup = BeautifulSoup(response.body, 'lxml')
         captcha = soup.find("div", id="recaptcha_image")
         if captcha:
@@ -156,8 +184,8 @@ class ExampleSpider(scrapy.Spider):
 
 
     def parse_company(self, response):
-        #print "===================================parse_company"
 
+        '''
         self.index += 1
         if response.status != 200:
             with open(str(self.index) + ".html", "w") as file:
@@ -172,7 +200,7 @@ class ExampleSpider(scrapy.Spider):
             self.relogin()
             # self.cookies = self.driver.get_cookies()
             self.index += 3
-
+        '''
         soup = BeautifulSoup(response.body, 'lxml')
         signin = soup.find("span", class_="signin acctMenu")
         if signin:
@@ -184,12 +212,24 @@ class ExampleSpider(scrapy.Spider):
 
         domain = "https://www.glassdoor.com"
         #self.cookies = self.driver.get_cookies()
+        for comModule in soup.find_all("div", class_="eiHdrModule module snug notranslate "):
+            comTag = comModule.find("a", class_="h1 tightAll")
+            if comTag and comTag.string:
+                comName = comTag.string.strip()
+                if comName in self.company:
+                    comLink = soup.find("a", class_="eiCell cell reviews")
+                    if comLink:
+                        titleLink = domain + comLink['href']
+                        yield scrapy.Request(titleLink, callback=self.parse_page,
+                                             meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+
+        '''
         for comLink in soup.find_all("a", class_="eiCell cell reviews"):
             titleLink = domain + comLink['href']
             #print "=================================company link:" + titleLink
             #time.sleep(random.random())
-            yield scrapy.Request(titleLink, callback=self.parse_page, cookies=self.cookies, dont_filter=True)
-
+            yield scrapy.Request(titleLink, callback=self.parse_page, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+        '''
 
 
         nextlink = response.xpath('//li[@class="next"]/a/@href').extract()
@@ -199,17 +239,18 @@ class ExampleSpider(scrapy.Spider):
             #print "==================================nextlink " + link
             #time.sleep(random.random())
 
-            yield scrapy.Request(link, callback=self.parse_company, cookies=self.cookies, dont_filter=True)
+            yield scrapy.Request(link, callback=self.parse_company, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
             self.last_url = link
             #self.index += 1
 
 
     def parse_page(self, response):
+        '''
         self.index += 1
         if response.status != 200:
             with open(str(self.index) + ".html", "w") as file:
                 file.write(response.body)
-
+        '''
         soup = BeautifulSoup(response.body, 'lxml')
 
         signin = soup.find("span", class_="signin acctMenu")
@@ -246,7 +287,7 @@ class ExampleSpider(scrapy.Spider):
         if nextlink:
             link = domain + nextlink[0]
             # time.sleep(random.random())
-            yield scrapy.Request(link, callback=self.parse_page, cookies=self.cookies, dont_filter=True)
+            yield scrapy.Request(link, callback=self.parse_page, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
             self.index += 1
 
 
