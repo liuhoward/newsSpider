@@ -23,6 +23,14 @@ class ExampleSpider(scrapy.Spider):
     username = "howard0601@163.com"
     password = "testsb"
 
+    account = [
+        'howard0601@163.com',
+        'h1746664@mvrht.com',
+        'h1746795@mvrht.com',
+        'h1746883@mvrht.com',
+        'h1746998@mvrht.com'
+    ]
+
     start_urls = ["https://www.glassdoor.com/index.htm",
                   "https://www.glassdoor.com/Reviews/us-reviews-SRCH_IL.0,2_IN1.htm",
                   "https://www.glassdoor.com/Reviews/Apple-Reviews-E1138.htm",
@@ -84,7 +92,7 @@ class ExampleSpider(scrapy.Spider):
             logging.error("fail to sign out")
 
 
-    def relogin(self):
+    def login(self):
 
         while self.recaptchaStatus:
             time.sleep(10)
@@ -114,6 +122,47 @@ class ExampleSpider(scrapy.Spider):
 
         self.driver.find_element_by_id("signInUsername").clear()
         self.driver.find_element_by_id("signInUsername").send_keys(self.username)
+        self.driver.find_element_by_id("signInPassword").clear()
+        self.driver.find_element_by_id("signInPassword").send_keys(self.password)
+        self.driver.find_element_by_id("signInBtn").click()
+        time.sleep(5)
+        self.cookies = self.driver.get_cookies()
+        time.sleep(1)
+        self.loginTime = datetime.datetime.now()
+        self.index = 1
+        return
+
+    def relogin(self):
+
+        while self.recaptchaStatus:
+            time.sleep(10)
+
+        self.logout()
+        self.driver.implicitly_wait(10)
+        self.driver.get(self.index_url)
+        time.sleep(2)
+        count = 1
+        while True:
+            try:
+                self.driver.find_element_by_css_selector("span.hideHH").click()
+                # self.driver.find_element_by_class_name("hideHH").click()
+                self.driver.implicitly_wait(10)
+                break
+
+            except:
+                # print "==============try fail, sleep"
+                logging.error("fail to sign in")
+                # time.sleep(20)
+                self.driver.implicitly_wait(20)
+            count += 1
+            if count == 5:
+                with open("login.html", "w") as file:
+                    file.write(self.driver.page_source.encode('utf-8'))
+                return
+
+        username = random.choice(self.account)
+        self.driver.find_element_by_id("signInUsername").clear()
+        self.driver.find_element_by_id("signInUsername").send_keys(username)
         self.driver.find_element_by_id("signInPassword").clear()
         self.driver.find_element_by_id("signInPassword").send_keys(self.password)
         self.driver.find_element_by_id("signInBtn").click()
@@ -167,7 +216,7 @@ class ExampleSpider(scrapy.Spider):
         print "==========================request"
 
         self.recaptcha()
-        self.relogin()
+        self.login()
 
         return [
             scrapy.Request(self.start_urls[0], meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
@@ -193,14 +242,15 @@ class ExampleSpider(scrapy.Spider):
 
         nowTime = datetime.datetime.now()
         delta = (nowTime - self.loginTime).seconds
-        if self.index % 200 == 0 or self.index % 200 == 1 or self.index % 200 == 2 or delta >= 300:
-            # yield scrapy.Request(link, callback=self.parse_company, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
-            time.sleep(30)
+        if  delta >= 300:
+            yield scrapy.Request(response.url, callback=self.parse_company, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+            #time.sleep(30)
             # self.logout()
             self.relogin()
             # self.cookies = self.driver.get_cookies()
             self.index += 3
         '''
+
         soup = BeautifulSoup(response.body, 'lxml')
         signin = soup.find("span", class_="signin acctMenu")
         if signin:

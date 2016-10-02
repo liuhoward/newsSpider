@@ -34,7 +34,7 @@ CONCURRENT_REQUESTS=1
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY=0.2
+#DOWNLOAD_DELAY=0.2
 # The download delay setting will honor only one of:
 CONCURRENT_REQUESTS_PER_DOMAIN=1
 #CONCURRENT_REQUESTS_PER_IP=16
@@ -61,7 +61,7 @@ CONCURRENT_REQUESTS_PER_DOMAIN=1
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'newsSpider.middlewares.RandomUserAgentMiddleware': 400,
-    #'newsSpider.middlewares.ProxyMiddleware': 410,
+    'newsSpider.middlewares.ProxyMiddleware': 410,
     'newsSpider.middlewares.PhantomJSMiddleware': 390,
     'newsSpider.downloadermiddlewares.useragent.UserAgentMiddleware': None
 }
@@ -111,3 +111,16 @@ USER_AGENT_LIST = [
     "Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5355d Safari/8536.25",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2"
 ]
+
+PROXIES = [
+           {'ip_port': 'http://74.202.77.224:80', 'user_pass': ''},
+           {'ip_port': 'http://50.206.36.254:3128', 'user_pass': ''},
+           {'ip_port': 'http://74.202.77.224:80', 'user_pass': ''},
+           {'ip_port': '45.64.136.154:8080', 'user_pass': ''},
+           {'ip_port': 'http://108.58.40.245:80', 'user_pass': ''},
+           #{'ip_port': '185.12.7.74:8080', 'user_pass': ''},
+           #{'ip_port': '150.129.130.180:8080', 'user_pass': ''},
+           #{'ip_port': '185.22.9.145:8080', 'user_pass': ''},
+           #{'ip_port': '200.20.168.135:80', 'user_pass': ''},
+           #{'ip_port': '177.55.64.38:8080', 'user_pass': ''},
+        ]
