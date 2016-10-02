@@ -234,22 +234,13 @@ class ExampleSpider(scrapy.Spider):
 
     def parse_company(self, response):
 
-        '''
-        self.index += 1
-        if response.status != 200:
-            with open(str(self.index) + ".html", "w") as file:
-                file.write(response.body)
-
         nowTime = datetime.datetime.now()
         delta = (nowTime - self.loginTime).seconds
-        if  delta >= 300:
-            yield scrapy.Request(response.url, callback=self.parse_company, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+        if  delta >= 400:
+            #yield scrapy.Request(response.url, callback=self.parse_company, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
             #time.sleep(30)
             # self.logout()
             self.relogin()
-            # self.cookies = self.driver.get_cookies()
-            self.index += 3
-        '''
 
         soup = BeautifulSoup(response.body, 'lxml')
         signin = soup.find("span", class_="signin acctMenu")
@@ -295,12 +286,12 @@ class ExampleSpider(scrapy.Spider):
 
 
     def parse_page(self, response):
-        '''
-        self.index += 1
-        if response.status != 200:
-            with open(str(self.index) + ".html", "w") as file:
-                file.write(response.body)
-        '''
+
+        nowTime = datetime.datetime.now()
+        delta = (nowTime - self.loginTime).seconds
+        if delta >= 400:
+            self.relogin()
+
         soup = BeautifulSoup(response.body, 'lxml')
 
         signin = soup.find("span", class_="signin acctMenu")
