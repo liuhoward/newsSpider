@@ -11,27 +11,18 @@ import scrapy
 class NewsspiderItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
-    company = scrapy.Field()
-    reviewID = scrapy.Field()
+    title = scrapy.Field()
+    authors = scrapy.Field()
 
-    reviewRating = scrapy.Field()
-    workRating = scrapy.Field()
-    compensationRating = scrapy.Field()
-    careerRating = scrapy.Field()
-    managementRating = scrapy.Field()
-    cultureRating = scrapy.Field()
+    publisher = scrapy.Field()
+    year = scrapy.Field()
+    volume = scrapy.Field()
+    issue = scrapy.Field()
 
-    reviewTitle = scrapy.Field()
-    jobTitle = scrapy.Field()
-    jobLocation = scrapy.Field()
-    reviewDate = scrapy.Field()
+    abstract = scrapy.Field()
+    keywords = scrapy.Field()
 
-    workingYear = scrapy.Field()
-    advice = scrapy.Field()
-    pros = scrapy.Field()
-    cons = scrapy.Field()
 
-    voteCount = scrapy.Field()
 
 
 

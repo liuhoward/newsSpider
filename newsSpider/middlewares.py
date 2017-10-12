@@ -32,7 +32,7 @@ class PhantomJSMiddleware(object):
 
     def process_request(self, request, spider):
 
-        if request.meta.has_key('PhantomJS'):
+        if 'PhantomJS' in request.meta.keys():
             logging.info('PhantomJS Requesting: '+request.url)
             try:
                 driver = request.meta['driver']
