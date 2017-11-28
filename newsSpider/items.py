@@ -22,6 +22,15 @@ class NewsspiderItem(scrapy.Item):
     abstract = scrapy.Field()
     keywords = scrapy.Field()
 
+    # main, cite, refer, other
+    category = scrapy.Field()
+
+    # times cited
+    num_cite = scrapy.Field()
+
+    # cited reference
+    num_refer = scrapy.Field()
+
 
 
 
