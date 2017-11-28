@@ -241,7 +241,7 @@ class ExampleSpider(scrapy.Spider):
                             yield scrapy.Request(paper_link, callback=self.parse_other_paper,
                                                  meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
         else:
-            print "=========================no main search list"
+            print "=========================no author search list"
             print(response.url)
 
         # request next list
