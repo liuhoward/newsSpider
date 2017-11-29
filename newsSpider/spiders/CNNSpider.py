@@ -247,11 +247,10 @@ class ExampleSpider(scrapy.Spider):
             print(response.url)
 
         # request next list
-        nextlink = soup.find("a", class_="paginationNext")['href']
-        # print "==============================================next link"
-        # print(nextlink)
-        if nextlink:
-            yield scrapy.Request(nextlink, callback=self.parse_author_search,
+        next_a = soup.find("a", class_="paginationNext")
+        if next_a:
+            next_link = next_a['href']
+            yield scrapy.Request(next_link, callback=self.parse_author_search,
                                  meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
 
     def parse_main_paper(self, response):
