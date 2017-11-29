@@ -25,7 +25,8 @@ class ExampleSpider(scrapy.Spider):
 
     index_url = '''http://apps.webofknowledge.com'''
 
-    search_url = '''https://apps.webofknowledge.com/summary.do?product=WOS&parentProduct=WOS&search_mode=GeneralSearch&qid=1&SID=8FVghPwp3MAXCdZDTMX&page=1&action=changePageSize&pageSize=50'''
+    search_url = '''https://apps.webofknowledge.com/summary.do?product=WOS&parentProduct=WOS&search_mode=GeneralSearch&qid=2&SID=5CyzxcBpcKkA9NhE3FC&page=1&action=changePageSize&pageSize=50'''
+
 
     cookies = None
 
@@ -150,12 +151,13 @@ class ExampleSpider(scrapy.Spider):
             print "=========================no main search list"
             print(response.url)
 
-        # if self.count_page >= 10:
-        # request next list
-        next_a = soup.find("a", class_="paginationNext")
-        if next_a:
-            next_link = next_a['href']
-            yield scrapy.Request(next_link, callback=self.parse_search,
+        if self.count_page < 10:
+            self.count_page += 1
+            # request next list
+            next_a = soup.find("a", class_="paginationNext")
+            if next_a:
+                next_link = next_a['href']
+                yield scrapy.Request(next_link, callback=self.parse_search,
                                  meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
 
     def parse_cite_search(self, response):
@@ -338,7 +340,7 @@ class ExampleSpider(scrapy.Spider):
                 else:
                     item['num_refer'] = 0
 
-                cite_a = block_content.p.p
+                cite_a = block_content.p.a
                 if cite_a:
                     link = domain + cite_a['href']
                     yield scrapy.Request(link, callback=self.parse_cite_search,
