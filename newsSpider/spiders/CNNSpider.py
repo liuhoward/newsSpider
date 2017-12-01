@@ -55,6 +55,7 @@ class ExampleSpider(scrapy.Spider):
         with open(dst_file, 'w') as fp:
             for author in self.author_lists:
                 line += author + ";"
+            fp.write(line)
 
         print "======================exported authors"
 
