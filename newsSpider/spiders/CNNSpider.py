@@ -25,8 +25,7 @@ class ExampleSpider(scrapy.Spider):
 
     index_url = '''http://apps.webofknowledge.com'''
 
-    search_url = '''https://apps.webofknowledge.com/summary.do?product=WOS&parentProduct=WOS&search_mode=GeneralSearch&qid=2&SID=5CyzxcBpcKkA9NhE3FC&page=1&action=changePageSize&pageSize=50'''
-
+    search_url = '''https://apps.webofknowledge.com/Search.do?product=WOS&SID=7AvRGRKMjuJJK4WvGzd&search_mode=GeneralSearch&prID=7b69968b-cb83-4918-8da5-406df0059137'''
 
     cookies = None
 
@@ -152,7 +151,7 @@ class ExampleSpider(scrapy.Spider):
             print "=========================no main search list"
             print(response.url)
 
-        if self.count_page < 10:
+        if self.count_page < 18:
             self.count_page += 1
             # request next list
             next_a = soup.find("a", class_="paginationNext")
@@ -279,7 +278,7 @@ class ExampleSpider(scrapy.Spider):
             new_author = author.next_sibling.string.strip()
             authors_list += author.get_text().strip() + new_author + ";"
             # mutex lock
-            if new_author not in self.author_lists:
+            if 0: # new_author not in self.author_lists:
                 self.mutex.acquire()
                 self.author_lists.add(new_author)
                 self.mutex.release()
@@ -334,17 +333,17 @@ class ExampleSpider(scrapy.Spider):
                 num_refer = soup.find("a", text=re.compile(r" Cited References"))
                 if num_refer:
                     item['num_refer'] = int(str(num_refer.string.strip()).split(" ")[0])
-                    link = domain + num_refer['href']
-                    yield scrapy.Request(link, callback=self.parse_refer_search,
-                                         meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+                    #link = domain + num_refer['href']
+                    #yield scrapy.Request(link, callback=self.parse_refer_search,
+                    #                     meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
                 else:
                     item['num_refer'] = 0
 
-                cite_a = block_content.p.a
-                if cite_a:
-                    link = domain + cite_a['href']
-                    yield scrapy.Request(link, callback=self.parse_cite_search,
-                                         meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
+                #cite_a = block_content.p.a
+                #if cite_a:
+                #    link = domain + cite_a['href']
+                #    yield scrapy.Request(link, callback=self.parse_cite_search,
+                #                         meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
 
         yield item
 
