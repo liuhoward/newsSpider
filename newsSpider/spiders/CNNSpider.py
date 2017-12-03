@@ -210,7 +210,7 @@ class ExampleSpider(scrapy.Spider):
                 num_refer = soup.find("a", text=re.compile(r" Cited References"))
                 if num_refer:
                     item['num_refer'] = int(str(num_refer.string.strip()).split(" ")[0])
-                    link = domain + num_refer['href']
+                    link = domain + "/" + num_refer['href']
                     yield scrapy.Request(link, callback=self.parse_refer_search)
                 else:
                     item['num_refer'] = 0
