@@ -25,9 +25,7 @@ class ExampleSpider(scrapy.Spider):
 
     index_url = '''http://apps.webofknowledge.com'''
 
-    search_url = '''https://apps.webofknowledge.com/summary.do?product=WOS&parentProduct=WOS&search_mode=GeneralSearch&qid=2&SID=5CyzxcBpcKkA9NhE3FC&page=1&action=changePageSize&pageSize=50'''
-
-
+    search_url = "https://apps.webofknowledge.com/summary.do?product=WOS&parentProduct=WOS&search_mode=GeneralSearch&qid=2&SID=7ABAN91brcaBl7wjFU6&colName=WOS&page=1&action=changePageSize&pageSize=50"
     cookies = None
 
     count_page = 0
@@ -50,13 +48,17 @@ class ExampleSpider(scrapy.Spider):
 
     def start_requests(self):
 
+        self.driver.get(self.search_url)
+        time.sleep(1)
+        self.cookies = self.driver.get_cookies()
+
         return [
             scrapy.Request(self.search_url, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
         ]
 
     def parse(self, response):
 
-        yield scrapy.Request(self.search_url, callback=self.parse_search)
+        yield scrapy.Request(self.search_url, callback=self.parse_search, cookies=self.cookies, dont_filter=True)
 
     def parse_search(self, response):
         """
@@ -64,35 +66,27 @@ class ExampleSpider(scrapy.Spider):
         :param response:
         :return:
         """
-
+        
         soup = BeautifulSoup(response.body, 'lxml')
 
         domain = self.index_url
 
-        # request each item
-        record_table = soup.find("div", id="summaryRecordsTable")
-        if record_table:
-            search_results = record_table.find_all("div", class_="search-results")
-            if search_results:
-                for search_result in search_results:
-                    for record in search_result.find_all("div", class_="search-results-content"):
-                        link = record.find("a", class_="smallV110")
-                        if link:
-                            paper_link = domain + link['href']
-                            # print "============================================paper link"
-                            # print(paper_link)
-                            yield scrapy.Request(paper_link, callback=self.parse_main_paper)
-        else:
-            print "=========================no main search list"
-            print(response.url)
+        for record in soup.find_all("div", class_="search-results-content"):
+            view_abstract = record.find("span", class_="button-abstract", id=re.compile("ViewAbstract"))
+            if view_abstract is None:
+                continue
+            link = record.find("a", class_="smallV110")
+            if link:
+                paper_link = domain + link['href']
+                yield scrapy.Request(paper_link, callback=self.parse_main_paper, cookies=self.cookies, dont_filter=True)
 
-        if self.count_page < 10:
+        if self.count_page < 1000:
             self.count_page += 1
             # request next list
             next_a = soup.find("a", class_="paginationNext")
             if next_a:
                 next_link = next_a['href']
-                yield scrapy.Request(next_link, callback=self.parse_search)
+                yield scrapy.Request(next_link, callback=self.parse_search, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
 
     def parse_cite_search(self, response):
 
@@ -101,21 +95,15 @@ class ExampleSpider(scrapy.Spider):
         domain = self.index_url
 
         # request each item
-        record_table = soup.find("div", id="summaryRecordsTable")
-        if record_table:
-            search_results = record_table.find_all("div", class_="search-results")
-            if search_results:
-                for search_result in search_results:
-                    for record in search_result.find_all("div", class_="search-results-content"):
-                        link = record.find("a", class_="smallV110")
-                        if link:
-                            paper_link = domain + link['href']
-                            # print "============================================paper link"
-                            # print(paper_link)
-                            yield scrapy.Request(paper_link, callback=self.parse_cite_paper)
-        else:
-            print "=========================no cite search list"
-            print(response.url)
+        for record in soup.find_all("div", class_="search-results-content"):
+            view_abstract = record.find("span", class_="button-abstract", id=re.compile("ViewAbstract"))
+            if view_abstract is None:
+                continue
+            link = record.find("a", class_="smallV110")
+            if link:
+                paper_link = domain + link['href']
+                yield scrapy.Request(paper_link, callback=self.parse_cite_paper, cookies=self.cookies, dont_filter=True)
+
 
     def parse_refer_search(self, response):
 
@@ -124,21 +112,14 @@ class ExampleSpider(scrapy.Spider):
         domain = self.index_url
 
         # request each item
-        record_table = soup.find("div", class_="NEWcitedReferencesContainer")
-        if record_table:
-            search_results = record_table.find_all("div", class_="search-results")
-            if search_results:
-                for search_result in search_results:
-                    for record in search_result.find_all("div", class_="search-results-content"):
-                        link = record.find("a", class_="smallV110")
-                        if link:
-                            paper_link = domain + link['href']
-                            # print "============================================paper link"
-                            # print(paper_link)
-                            yield scrapy.Request(paper_link, callback=self.parse_refer_paper)
-        else:
-            print "=========================no refer search list"
-            print(response.url)
+        for record in soup.find_all("div", class_="search-results-item"):
+            view_abstract = record.find("span", class_="button-abstract", id=re.compile("ViewAbstract"))
+            if view_abstract is None:
+                continue
+            link = record.find("a", class_="smallV110")
+            if link:
+                paper_link = domain + link['href']
+                yield scrapy.Request(paper_link, callback=self.parse_refer_paper, cookies=self.cookies, dont_filter=True)
 
     def parse_main_paper(self, response):
 
@@ -199,7 +180,7 @@ class ExampleSpider(scrapy.Spider):
 
         num_cite = soup.find("span", class_="TCcountFR")
         if num_cite:
-            item['num_cite'] = int(num_cite.string.strip())
+            item['num_cite'] = int(str(num_cite.string.strip()).replace(",", ""))
         else:
             item['num_cite'] = 0
 
@@ -211,14 +192,14 @@ class ExampleSpider(scrapy.Spider):
                 if num_refer:
                     item['num_refer'] = int(str(num_refer.string.strip()).split(" ")[0])
                     link = domain + "/" + num_refer['href']
-                    yield scrapy.Request(link, callback=self.parse_refer_search)
+                    yield scrapy.Request(link, callback=self.parse_refer_search, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
                 else:
                     item['num_refer'] = 0
 
                 cite_a = block_content.p.a
                 if cite_a:
                     link = domain + cite_a['href']
-                    yield scrapy.Request(link, callback=self.parse_cite_search)
+                    yield scrapy.Request(link, callback=self.parse_cite_search, meta={'driver': self.driver, 'PhantomJS': True}, dont_filter=True)
 
         yield item
 
@@ -279,7 +260,7 @@ class ExampleSpider(scrapy.Spider):
 
         num_cite = soup.find("span", class_="TCcountFR")
         if num_cite:
-            item['num_cite'] = int(num_cite.string.strip())
+            item['num_cite'] = int(str(num_cite.string.strip()).replace(",", ""))
         else:
             item['num_cite'] = 0
 
@@ -297,6 +278,7 @@ class ExampleSpider(scrapy.Spider):
 
 
     def parse_refer_paper(self, response):
+
 
         soup = BeautifulSoup(response.body, 'lxml')
 
@@ -353,7 +335,7 @@ class ExampleSpider(scrapy.Spider):
 
         num_cite = soup.find("span", class_="TCcountFR")
         if num_cite:
-            item['num_cite'] = int(num_cite.string.strip())
+            item['num_cite'] = int(str(num_cite.string.strip()).replace(",", ""))
         else:
             item['num_cite'] = 0
 
