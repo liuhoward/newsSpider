@@ -9,6 +9,7 @@ from selenium import webdriver
 import base64
 from settings import PROXIES
 
+
 class RandomUserAgentMiddleware(object):
 
     def process_request(self, request, spider):
@@ -17,7 +18,9 @@ class RandomUserAgentMiddleware(object):
             request.headers.setdefault('User-Agent', ua)
             #logging.info('User-Agent: ' + ua)
 
+
 class ProxyMiddleware(object):
+
     def process_request(self, request, spider):
         proxy = random.choice(PROXIES)
         if proxy['user_pass'] is not None:
@@ -27,8 +30,8 @@ class ProxyMiddleware(object):
         else:
             request.meta['proxy'] = "%s" % proxy['ip_port']
 
+
 class PhantomJSMiddleware(object):
-    # overwrite process request
 
     def process_request(self, request, spider):
 
@@ -37,13 +40,11 @@ class PhantomJSMiddleware(object):
             try:
                 driver = request.meta['driver']
                 driver.get(request.url)
-                content = driver.page_source.encode('utf8')
-                url = driver.current_url.encode('utf8')
-                return HtmlResponse(url, encoding='utf8',
-                                    status=200, body=content)
+                content = driver.page_source.encode('utf-8')
+                url = driver.current_url.encode('utf-8')
+                return HtmlResponse(url, encoding='utf-8', status=200, body=content)
 
-            except Exception, e:  # 请求异常，当成500错误。交给重试中间件处理
-                logging.error('PhantomJS Exception!')
-                return HtmlResponse(request.url, encoding='utf8',
-                                    status=503, body='')
+            except Exception, e:
+                logging.error('PhantomJS Exception! ' + e.message)
+                return HtmlResponse(request.url, encoding='utf8', status=503, body='')
 
