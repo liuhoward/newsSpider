@@ -36,15 +36,15 @@ class PhantomJSMiddleware(object):
     def process_request(self, request, spider):
 
         if 'PhantomJS' in request.meta.keys():
-            logging.info('PhantomJS Requesting: '+request.url)
             try:
                 driver = request.meta['driver']
                 driver.get(request.url)
                 content = driver.page_source.encode('utf-8')
                 url = driver.current_url.encode('utf-8')
+                logging.info('PhantomJS Request: ' + request.url)
                 return HtmlResponse(url, encoding='utf-8', status=200, body=content, request=request)
 
-            except Exception, e:
+            except Exception as e:
                 driver = request.meta['driver']
                 logging.error('PhantomJS Exception!!! ' + driver.current_url.encode('utf-8'))
                 return HtmlResponse(request.url, encoding='utf8', status=503, body='')

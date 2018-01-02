@@ -45,6 +45,10 @@ class ExampleSpider(scrapy.Spider):
     def __del__(self):
         self.driver.close()
 
+        data_path = "../data/class_central/"
+        urls_file = data_path + "class_central_urls_update.txt"
+        self._export_urls(urls_file)
+
     def _import_urls(self, src_file):
 
         class_urls = dict()
@@ -62,6 +66,18 @@ class ExampleSpider(scrapy.Spider):
 
         return class_urls, user_urls
 
+    def _export_urls(self, user_file):
+
+        with open(user_file, "wb") as fp:
+            header = ['category', 'url']
+            writer = csv.DictWriter(fp, fieldnames=header)
+            writer.writeheader()
+            for url in self.class_dict.keys():
+                writer.writerow({header[0]: self.class_dict[url], header[1]: url})
+
+            for url in self.user_dict.keys():
+                writer.writerow({header[0]: self.user_dict[url], header[1]: url})
+
     def start_requests(self):
 
         domain = self.index_url
@@ -72,12 +88,12 @@ class ExampleSpider(scrapy.Spider):
         for current_url in self.class_dict.keys():
             category = self.class_dict[current_url]
             yield scrapy.Request(current_url, callback=self.parse_class,
-                                 meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
+                                 meta={'category': category})
 
-        for current_url in self.user_dict.keys():
-            category = 'user'
-            yield scrapy.Request(current_url, callback=self.parse_user,
-                                 meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
+        #for current_url in self.user_dict.keys():
+        #    category = 'user'
+        #    yield scrapy.Request(current_url, callback=self.parse_user,
+        #                         meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
 
     def parse_class(self, response):
 
