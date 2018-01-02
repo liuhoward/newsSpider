@@ -13,6 +13,7 @@ class NewsspiderItem(scrapy.Item):
 
     url = scrapy.Field()
     category = scrapy.Field()
+    page = scrapy.Field()
 
 
 

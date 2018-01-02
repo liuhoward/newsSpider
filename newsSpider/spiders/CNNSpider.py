@@ -16,43 +16,13 @@ import logging
 import urllib
 import threading
 import logging
+import csv
 
 class ExampleSpider(scrapy.Spider):
 
     name = "newsSpider"
 
-    start_urls = [("https://www.class-central.com/subject/cs", "Computer Science"),
-                  ("https://www.class-central.com/subject/data-science", "Data Science"),
-                  ("https://www.class-central.com/subject/programming-and-software-development", "Programming"),
-                  ("https://www.class-central.com/subject/business", "Business"),
-                  ("https://www.class-central.com/subject/engineering", "Engineering"),
-                  ("https://www.class-central.com/subject/social-sciences", "Social Sciences"),
-                  ("https://www.class-central.com/subject/personal-development", "Personal Development"),
-                  ("https://www.class-central.com/subject/maths", "Mathematics"),
-                  ("https://www.class-central.com/subject/education", "Education & Teaching"),
-                  ("https://www.class-central.com/subject/humanities", "Humanities"),
-                  ("https://www.class-central.com/subject/art-and-design", "Art & Design"),
-                  ("https://www.class-central.com/subject/health", "Health & Medicine"),
-                  ("https://www.class-central.com/subject/science", "Science")
-                  ]
-
     index_url = '''https://www.class-central.com'''
-
-    categories = [
-        "Computer Science",
-        "Data Science",
-        "Programming",
-        "Business",
-        "Engineering",
-        "Social Sciences",
-        "Personal Development",
-        "Mathematics",
-        "Education & Teaching",
-        "Humanities",
-        "Art & Design",
-        "Health & Medicine",
-        "Science"
-    ]
 
     cookies = None
 
@@ -68,8 +38,29 @@ class ExampleSpider(scrapy.Spider):
             service_args=service_args)
         self.driver.implicitly_wait(10)
 
+        data_path = "../data/class_central/"
+        urls_file = data_path + "class_central_urls_20171231.txt"
+        self.class_dict, self.user_dict = self._import_urls(urls_file)
+
     def __del__(self):
         self.driver.close()
+
+    def _import_urls(self, src_file):
+
+        class_urls = dict()
+        user_urls = dict()
+
+        with open(src_file, "rb") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                category = row['category']
+                url = row['url']
+                if category == 'user':
+                    user_urls[url] = category
+                else:
+                    class_urls[url] = category
+
+        return class_urls, user_urls
 
     def start_requests(self):
 
@@ -78,55 +69,57 @@ class ExampleSpider(scrapy.Spider):
 
     def parse(self, response):
 
-        domain = self.index_url
+        for current_url in self.class_dict.keys():
+            category = self.class_dict[current_url]
+            yield scrapy.Request(current_url, callback=self.parse_class,
+                                 meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
 
-        for i in range(len(self.start_urls)):
-            url = self.start_urls[i][0]
-            category = self.start_urls[i][1]
+        for current_url in self.user_dict.keys():
+            category = 'user'
+            yield scrapy.Request(current_url, callback=self.parse_user,
+                                 meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
 
-            self.driver.get(url)
+    def parse_class(self, response):
 
-            while True:
-                try:
-                    self.driver.find_element_by_id("show-more-courses").click()
-                    time.sleep(1)
-                except:
-                    break
-
-            self.cookies = self.driver.get_cookies()
-            body = self.driver.page_source.encode('utf8')
-            soup = BeautifulSoup(body, 'lxml')
-
-            tbody = soup.find("tbody", class_="table-body-subjectstable")
-            if tbody is not None:
-                for tr in tbody.find_all("tr", itemtype="http://schema.org/Event"):
-                    a = tr.find("a", class_="text--charcoal text-2 medium-up-text-1 block course-name")
-                    if a is None:
-                        continue
-                    link = domain + a['href']
-                    logging.info("get class " + link)
-
-                    item = NewsspiderItem()
-                    item['category'] = category
-                    item['url'] = link
-                    yield item
-
-                    interested_link = link + "/interested"
-                    yield scrapy.Request(interested_link, callback=self.parse_interested_users, meta={})
-
-    def parse_interested_users(self, response):
-
-        soup = BeautifulSoup(response.body, 'lxml')
-
-        domain = self.index_url
-
-        for a in soup.find_all("a", class_="flip-card"):
-            link = domain + a['href']
-            logging.info("get interested user " + link)
+        soup = BeautifulSoup(response.body, "lxml")
+        meta = response.request.meta
+        category = meta['category']
+        current_url = response.url
+        content = soup.find("div", class_="container cc-body-content")
+        if content is not None:
             item = NewsspiderItem()
-            item['category'] = 'user'
-            item['url'] = link
+            item['category'] = category
+            item['url'] = current_url
+            item['page'] = content.decode()
             yield item
-            #yield scrapy.Request(link, callback=self.parse_user, meta={'driver': self.driver, 'PhantomJS': True})
 
+        else:
+            logging.info("failed to get content: " + current_url)
 
+        all_reviews = soup.find("div", class_="course-all-reviews")
+        if all_reviews:
+
+            for review_title in all_reviews.find_all("div", class_="review-title title-with-image"):
+                a = review_title.find("a")
+                if a is not None:
+                    link = self.index_url + a['href']
+                    if link not in self.user_dict.keys():
+                        logging.info("add new user: " + link)
+                        self.user_dict[link] = 'user'
+
+    def parse_user(self, response):
+
+        soup = BeautifulSoup(response.body, "lxml")
+        meta = response.request.meta
+        category = meta['category']
+        current_url = response.url
+
+        content = soup.find("div", class_="container cc-body-content")
+        if content is not None:
+            item = NewsspiderItem()
+            item['category'] = category
+            item['url'] = current_url
+            item['page'] = content.decode()
+            yield item
+        else:
+            logging.info("failed to get content: " + current_url)

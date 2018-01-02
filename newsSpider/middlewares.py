@@ -42,9 +42,10 @@ class PhantomJSMiddleware(object):
                 driver.get(request.url)
                 content = driver.page_source.encode('utf-8')
                 url = driver.current_url.encode('utf-8')
-                return HtmlResponse(url, encoding='utf-8', status=200, body=content)
+                return HtmlResponse(url, encoding='utf-8', status=200, body=content, request=request)
 
             except Exception, e:
-                logging.error('PhantomJS Exception! ' + e.message)
+                driver = request.meta['driver']
+                logging.error('PhantomJS Exception!!! ' + driver.current_url.encode('utf-8'))
                 return HtmlResponse(request.url, encoding='utf8', status=503, body='')
 
