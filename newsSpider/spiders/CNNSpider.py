@@ -33,21 +33,9 @@ class ExampleSpider(scrapy.Spider):
 
     def __init__(self):
 
-        service_args = ['--load-images=false', '--disk-cache=true']
-        self.driver = webdriver.PhantomJS(
-            service_args=service_args)
-        self.driver.implicitly_wait(10)
-
         data_path = "../data/class_central/"
-        urls_file = data_path + "class_central_urls_20171231.txt"
-        self.class_dict, self.user_dict = self._import_urls(urls_file)
-
-    def __del__(self):
-        self.driver.close()
-
-        data_path = "../data/class_central/"
-        urls_file = data_path + "class_central_urls_update.txt"
-        self._export_urls(urls_file)
+        user_urls_file = data_path + "user_urls.txt"
+        self.user_urls = self._import_user_urls(user_urls_file)
 
     def _import_urls(self, src_file):
 
@@ -65,6 +53,20 @@ class ExampleSpider(scrapy.Spider):
                     class_urls[url] = category
 
         return class_urls, user_urls
+
+    def _import_user_urls(self, src_file):
+
+        user_urls = set()
+        with open(src_file, "rb") as fp:
+
+            while True:
+                lines = fp.readlines(3000)
+                if not lines:
+                    break
+                for line in lines:
+                    user_urls.add(str(line).replace("\n", "").strip())
+
+        return user_urls
 
     def _export_urls(self, user_file):
 
@@ -85,15 +87,13 @@ class ExampleSpider(scrapy.Spider):
 
     def parse(self, response):
 
-        for current_url in self.class_dict.keys():
-            category = self.class_dict[current_url]
-            yield scrapy.Request(current_url, callback=self.parse_class,
-                                 meta={'category': category})
+        #for current_url in self.class_dict.keys():
+        #    category = self.class_dict[current_url]
+        #    yield scrapy.Request(current_url, callback=self.parse_class,
+        #                         meta={'category': category})
 
-        #for current_url in self.user_dict.keys():
-        #    category = 'user'
-        #    yield scrapy.Request(current_url, callback=self.parse_user,
-        #                         meta={'driver': self.driver, 'PhantomJS': True, 'category': category})
+        for current_url in self.user_urls:
+            yield scrapy.Request(url=current_url, callback=self.parse_user, meta={})
 
     def parse_class(self, response):
 
@@ -127,7 +127,7 @@ class ExampleSpider(scrapy.Spider):
 
         soup = BeautifulSoup(response.body, "lxml")
         meta = response.request.meta
-        category = meta['category']
+        category = 'user' #meta['category']
         current_url = response.url
 
         content = soup.find("div", class_="container cc-body-content")
